@@ -1,0 +1,15 @@
+[project]
+name = "rev-agent"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "anthropic",
+    "httpx",
+    "beautifulsoup4",
+    "python-dotenv",
+    "PyGithub",
+    "jinja2",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
