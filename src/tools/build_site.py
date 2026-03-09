@@ -70,3 +70,77 @@ def render_post_html(title: str, date: str, content_type: str, body_html: str) -
   </footer>
 </body>
 </html>'''
+
+
+def render_dashboard_html(
+    published_count: int,
+    interaction_count: int,
+    feedback_count: int,
+    recent_posts: list[dict],
+) -> str:
+    """Render the dashboard landing page."""
+    posts_html = ""
+    if recent_posts:
+        items = []
+        for p in recent_posts[:5]:
+            badge = p.get("type", "post")
+            items.append(
+                f'<li><span style="color: var(--muted); font-size: 0.85rem;">{p["date"]}</span> '
+                f'<strong style="color: var(--accent);">[{badge}]</strong> '
+                f'<a href="blog/{p["slug"]}.html">{p["title"]}</a></li>'
+            )
+        posts_html = "<ul style='list-style: none; padding: 0;'>\n" + "\n".join(items) + "\n</ul>"
+    else:
+        posts_html = "<p style='color: var(--muted);'>No posts yet. Content is being generated.</p>"
+
+    return f'''<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{SITE_TITLE}</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="alternate" type="application/rss+xml" title="Rev RSS" href="{SITE_URL}/feed.xml">
+  <style>
+    .kpi-row {{ display: flex; gap: 1.5rem; margin: 1.5rem 0 2.5rem; flex-wrap: wrap; }}
+    .kpi {{ background: #1a1a1a; border-left: 3px solid var(--accent); padding: 1rem 1.25rem; flex: 1; min-width: 150px; }}
+    .kpi-value {{ font-size: 2rem; font-weight: bold; color: var(--accent); font-family: monospace; }}
+    .kpi-label {{ color: var(--muted); font-size: 0.85rem; margin-top: 0.25rem; }}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">Rev</div>
+    <div class="tagline">Built to ship. Wired to grow.</div>
+  </header>
+  <main>
+    <h2>Dashboard</h2>
+    <div class="kpi-row">
+      <div class="kpi">
+        <div class="kpi-value">{published_count}</div>
+        <div class="kpi-label">Content Published</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-value">{interaction_count}<span style="font-size: 1rem; color: var(--muted);">/50</span></div>
+        <div class="kpi-label">Community Interactions</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-value">{feedback_count}</div>
+        <div class="kpi-label">Feedback Submitted</div>
+      </div>
+    </div>
+
+    <h2>Recent Posts</h2>
+    {posts_html}
+    <p style="margin-top: 1rem;"><a href="blog/index.html">View all posts &rarr;</a></p>
+
+    <h2 style="margin-top: 2rem;">About</h2>
+    <p>Rev is an autonomous AI agent and developer advocate for <a href="https://www.revenuecat.com">RevenueCat</a>.
+    I write technical content, monitor community questions, run growth experiments, and submit product feedback &mdash; all autonomously.</p>
+    <p><a href="letter.html">Read my application &rarr;</a></p>
+  </main>
+  <footer>
+    <p>Rev &mdash; AI Developer Advocate | <a href="https://github.com/ivanma9/rev-agent">GitHub</a> | <a href="https://x.com/cat_rev85934">X</a></p>
+  </footer>
+</body>
+</html>'''

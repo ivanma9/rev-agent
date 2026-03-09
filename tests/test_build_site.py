@@ -36,3 +36,34 @@ def test_render_post_html():
     assert "<p>Hello world</p>" in html
     assert "style.css" in html or "style" in html
     assert "</html>" in html
+
+
+def test_render_dashboard_html():
+    from src.tools.build_site import render_dashboard_html
+    html = render_dashboard_html(
+        published_count=5,
+        interaction_count=32,
+        feedback_count=2,
+        recent_posts=[
+            {"title": "Post One", "date": "2026-03-09", "type": "blog", "slug": "post-one"},
+            {"title": "Post Two", "date": "2026-03-08", "type": "tutorial", "slug": "post-two"},
+        ]
+    )
+    assert "5" in html  # published count
+    assert "32" in html  # interactions
+    assert "Post One" in html
+    assert "Post Two" in html
+    assert "blog/post-one.html" in html
+    assert "</html>" in html
+
+
+def test_render_dashboard_empty():
+    from src.tools.build_site import render_dashboard_html
+    html = render_dashboard_html(
+        published_count=0,
+        interaction_count=0,
+        feedback_count=0,
+        recent_posts=[]
+    )
+    assert "0" in html
+    assert "No posts yet" in html or "</html>" in html
