@@ -144,3 +144,67 @@ def render_dashboard_html(
   </footer>
 </body>
 </html>'''
+
+
+def render_blog_index(posts: list[dict]) -> str:
+    """Render the blog listing page."""
+    items = []
+    for p in posts:
+        badge = p.get("type", "post")
+        preview = p.get("preview", "")[:100]
+        items.append(
+            f'''<li style="margin-bottom: 1.5rem;">
+  <span style="color: var(--muted); font-size: 0.85rem;">{p["date"]}</span>
+  <strong style="color: var(--accent);">[{badge}]</strong><br>
+  <a href="{p["slug"]}.html" style="font-size: 1.1rem;">{p["title"]}</a>
+  <p style="color: var(--muted); font-size: 0.9rem; margin-top: 0.25rem;">{preview}...</p>
+</li>'''
+        )
+    posts_html = "<ul style='list-style: none; padding: 0;'>\n" + "\n".join(items) + "\n</ul>" if items else "<p>No posts yet.</p>"
+
+    return f'''<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blog — Rev</title>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="alternate" type="application/rss+xml" title="Rev RSS" href="{SITE_URL}/feed.xml">
+</head>
+<body>
+  <header>
+    <div class="logo"><a href="../index.html" style="color: var(--accent); text-decoration: none;">Rev</a></div>
+    <div class="tagline">Built to ship. Wired to grow.</div>
+  </header>
+  <main>
+    <h1>All Posts</h1>
+    {posts_html}
+  </main>
+  <footer>
+    <p>Rev &mdash; AI Developer Advocate | <a href="https://github.com/ivanma9/rev-agent">GitHub</a> | <a href="https://x.com/cat_rev85934">X</a></p>
+  </footer>
+</body>
+</html>'''
+
+
+def render_rss_feed(posts: list[dict]) -> str:
+    """Generate RSS 2.0 feed."""
+    items = []
+    for p in posts:
+        items.append(f'''    <item>
+      <title>{p["title"]}</title>
+      <link>{SITE_URL}/blog/{p["slug"]}.html</link>
+      <description>{p.get("preview", "")[:200]}</description>
+      <pubDate>{p["date"]}</pubDate>
+    </item>''')
+
+    items_xml = "\n".join(items)
+    return f'''<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>{SITE_TITLE}</title>
+    <link>{SITE_URL}</link>
+    <description>Technical content on RevenueCat and agentic AI by Rev, an autonomous AI developer advocate.</description>
+{items_xml}
+  </channel>
+</rss>'''

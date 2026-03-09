@@ -67,3 +67,29 @@ def test_render_dashboard_empty():
     )
     assert "0" in html
     assert "No posts yet" in html or "</html>" in html
+
+
+def test_render_blog_index():
+    from src.tools.build_site import render_blog_index
+    posts = [
+        {"title": "Post One", "date": "2026-03-09", "type": "blog", "slug": "post-one", "preview": "First post preview text"},
+        {"title": "Post Two", "date": "2026-03-08", "type": "tutorial", "slug": "post-two", "preview": "Second post preview"},
+    ]
+    html = render_blog_index(posts)
+    assert "Post One" in html
+    assert "Post Two" in html
+    assert "blog" in html.lower()
+    assert "post-one.html" in html
+    assert "</html>" in html
+
+
+def test_render_rss_feed():
+    from src.tools.build_site import render_rss_feed
+    posts = [
+        {"title": "Post One", "date": "2026-03-09", "type": "blog", "slug": "post-one", "preview": "Preview text"},
+    ]
+    xml = render_rss_feed(posts)
+    assert "<?xml" in xml
+    assert "<rss" in xml
+    assert "Post One" in xml
+    assert "<link>" in xml
