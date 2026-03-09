@@ -20,6 +20,9 @@ def test_is_relevant_to_agents_false_positives():
     assert is_relevant_to_agents("Crash when calling purchasePackage on Android") is False
     assert is_relevant_to_agents("[DO NOT MERGE] Bump fastlane from 2.229.1 to 2.232.2") is False
     assert is_relevant_to_agents("Fix video audio session category to use .playback") is False
+    assert is_relevant_to_agents("[Dependabot] Bump lodash from 4.17.20 to 4.17.21") is False
+    assert is_relevant_to_agents("Fix fastlane lane for AppStore upload") is False
+    assert is_relevant_to_agents("reagent dosage tracking app") is False  # whole-word boundary test
 
 def test_format_github_comment():
     from src.tools.community_monitor import format_github_comment

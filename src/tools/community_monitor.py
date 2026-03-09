@@ -38,7 +38,7 @@ AGENT_KEYWORDS_WHOLE_WORD = [
 
 # Known noise patterns to skip regardless of keyword matches
 NOISE_PATTERNS = [
-    "renovate", "dependabot", "bump ", "fastlane",
+    "renovate", "dependabot", "bump", "fastlane",
     "circleci", "maestro", "github action", "github actions",
     "[do not merge]",
 ]
