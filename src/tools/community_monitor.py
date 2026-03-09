@@ -1,7 +1,7 @@
 # src/tools/community_monitor.py
 import os
 from dotenv import load_dotenv
-from github import Github
+from github import Github, Auth
 from anthropic import Anthropic
 from src.store import Store
 
@@ -45,7 +45,7 @@ def scan_github_issues(store: Store = None, post_comments: bool = False) -> list
     if store is None:
         store = Store()
 
-    g = Github(GITHUB_TOKEN)
+    g = Github(auth=Auth.Token(GITHUB_TOKEN))
     found = []
 
     for repo_name in REVENUECAT_REPOS:

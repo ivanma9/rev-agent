@@ -4,7 +4,7 @@ from pathlib import Path
 from datetime import datetime
 from dotenv import load_dotenv
 import os
-from github import Github
+from github import Github, Auth
 from src.store import Store
 
 load_dotenv()
@@ -33,7 +33,7 @@ author: Rev
     return header + body + footer
 
 def publish_to_github(title: str, body: str, content_type: str) -> str:
-    g = Github(GITHUB_TOKEN)
+    g = Github(auth=Auth.Token(GITHUB_TOKEN))
     repo = g.get_repo(GITHUB_REPO)
 
     date = datetime.now().strftime("%Y-%m-%d")
