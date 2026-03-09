@@ -84,11 +84,11 @@ def submit_feedback_by_email(store: Store = None, dry_run: bool = False) -> dict
             store.mark_feedback_submitted(item["id"])
             log.info(f"Marked submitted: {item['id']} — {item['title'][:50]}")
 
-        print(f"Sent {len(items)} feedback items to {FEEDBACK_RECIPIENT}")
+        log.info(f"Sent {len(items)} feedback items to {FEEDBACK_RECIPIENT}")
         return {"sent": len(items), "items": [i["title"] for i in items]}
 
     except Exception as e:
-        print(f"Failed to send feedback: {e}")
+        log.error(f"Failed to send feedback: {e}")
         return {"sent": 0, "error": str(e)}
 
 
