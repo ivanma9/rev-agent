@@ -117,6 +117,7 @@ def run_now(task: str):
         "community": lambda: __import__("src.tools.community_monitor", fromlist=["scan_github_issues"]).scan_github_issues(store, post_comments=False),
         "report": lambda: __import__("src.tools.weekly_report", fromlist=["save_and_publish_report"]).save_and_publish_report(store),
         "feedback": lambda: __import__("src.tools.product_feedback", fromlist=["generate_weekly_feedback"]).generate_weekly_feedback(store),
+        "feedback_submit": lambda: __import__("src.tools.feedback_submitter", fromlist=["submit_feedback_by_email"]).submit_feedback_by_email(store, dry_run=False),
     }
     if task not in tasks:
         print(f"Unknown task. Available: {list(tasks.keys())}")

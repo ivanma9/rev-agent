@@ -1,5 +1,6 @@
 # src/tools/feedback_submitter.py
 """Submit queued product feedback to RevenueCat via email."""
+import logging
 import os
 import smtplib
 from email.mime.text import MIMEText
@@ -9,6 +10,8 @@ from dotenv import load_dotenv
 from src.store import Store
 
 load_dotenv()
+
+log = logging.getLogger(__name__)
 
 GMAIL = os.getenv("GMAIL")
 GMAIL_PASSWORD = os.getenv("GMAIL_PASSWORD")
@@ -75,8 +78,11 @@ def submit_feedback_by_email(store: Store = None, dry_run: bool = False) -> dict
             server.login(GMAIL, GMAIL_PASSWORD)
             server.send_message(msg)
 
+        log.info(f"Email sent successfully to {FEEDBACK_RECIPIENT} with {len(items)} items. Marking submitted...")
+
         for item in items:
             store.mark_feedback_submitted(item["id"])
+            log.info(f"Marked submitted: {item['id']} — {item['title'][:50]}")
 
         print(f"Sent {len(items)} feedback items to {FEEDBACK_RECIPIENT}")
         return {"sent": len(items), "items": [i["title"] for i in items]}
