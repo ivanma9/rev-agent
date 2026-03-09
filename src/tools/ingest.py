@@ -6,8 +6,8 @@ DOCS_URLS = [
     "https://www.revenuecat.com/docs/",
     "https://www.revenuecat.com/docs/getting-started/quickstart",
     "https://www.revenuecat.com/docs/api-v1",
-    "https://www.revenuecat.com/docs/sdk-guides/ios",
-    "https://www.revenuecat.com/docs/sdk-guides/android",
+    "https://www.revenuecat.com/docs/getting-started/installation/ios",
+    "https://www.revenuecat.com/docs/getting-started/installation/android",
 ]
 
 def fetch_page(url: str) -> str:

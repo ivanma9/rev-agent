@@ -11,3 +11,10 @@ def test_extract_text_strips_tags():
     assert "Hello" in text
     assert "World" in text
     assert "<" not in text
+
+def test_all_docs_urls_return_200():
+    from src.tools.ingest import DOCS_URLS
+    import httpx
+    for url in DOCS_URLS:
+        r = httpx.get(url, follow_redirects=True, timeout=15)
+        assert r.status_code == 200, f"URL returned {r.status_code}: {url}"
