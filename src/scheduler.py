@@ -80,8 +80,11 @@ class RevScheduler:
             return
         from src.tools.publisher import publish_pending
         publish_pending(self.store)
-        from src.tools.build_site import build_full_site
-        build_full_site(self.store)
+        try:
+            from src.tools.build_site import build_full_site
+            build_full_site(self.store)
+        except Exception:
+            log.exception("Site build failed after publish")
 
     def _run_community_scan(self):
         log.info("Scanning community channels...")
