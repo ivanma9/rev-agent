@@ -13,3 +13,6 @@ dependencies = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "integration: marks tests that make live network calls (deselect with '-m not integration')",
+]
