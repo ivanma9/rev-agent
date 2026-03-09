@@ -14,5 +14,11 @@ def test_scheduler_has_jobs():
     assert "community_scan" in job_ids
 
 def test_scheduler_run_now_has_x_post():
-    from src.scheduler import TASKS
-    assert "x_post" in TASKS
+    from src.scheduler import TASK_KEYS, _build_tasks
+    from src.store import Store
+    assert "x_post" in TASK_KEYS
+    # Also verify _build_tasks helper has all expected keys
+    tasks = _build_tasks(Store(":memory:"))
+    assert "x_post" in tasks
+    assert "feedback_submit" in tasks
+    assert "sync" in tasks

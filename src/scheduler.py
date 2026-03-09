@@ -126,7 +126,11 @@ def _build_tasks(store: Store) -> dict:
     }
 
 # Module-level for testability
-TASKS = _build_tasks(Store())
+def _get_task_keys() -> list[str]:
+    """Return available task names without opening a real DB connection."""
+    return list(_build_tasks(Store(":memory:")).keys())
+
+TASK_KEYS = _get_task_keys()
 
 def run_now(task: str):
     store = Store()
