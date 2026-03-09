@@ -1,5 +1,6 @@
 # src/tools/community_monitor.py
 import os
+import re
 from dotenv import load_dotenv
 from github import Github, Auth
 from anthropic import Anthropic
@@ -15,16 +16,49 @@ REVENUECAT_REPOS = [
     "RevenueCat/purchases-flutter",
 ]
 
-AGENT_KEYWORDS = [
-    "agent", "autonomous", "llm", "gpt", "claude", "ai app", "bot",
-    "automated", "openai", "langchain", "agentic", "copilot"
+# Phrases specific enough to match as substrings
+AGENT_PHRASES = [
+    "ai agent", "ai-agent",
+    "llm",
+    "gpt-", "gpt4", "gpt3",
+    "claude api", "anthropic",
+    "openai",
+    "langchain", "langgraph",
+    "agentic",
+    "copilot",
+    "autonomous agent",
+    "agents.md",
+]
+
+# Single words — only match as whole words (not substrings)
+AGENT_KEYWORDS_WHOLE_WORD = [
+    "agent",
+    "agents",
+]
+
+# Known noise patterns to skip regardless of keyword matches
+NOISE_PATTERNS = [
+    "renovate", "dependabot", "bump ", "fastlane",
+    "circleci", "maestro", "github action", "github actions",
+    "[do not merge]",
 ]
 
 client = Anthropic()
 
 def is_relevant_to_agents(text: str) -> bool:
     text_lower = text.lower()
-    return any(kw in text_lower for kw in AGENT_KEYWORDS)
+
+    if any(noise in text_lower for noise in NOISE_PATTERNS):
+        return False
+
+    if any(phrase in text_lower for phrase in AGENT_PHRASES):
+        return True
+
+    for kw in AGENT_KEYWORDS_WHOLE_WORD:
+        if re.search(rf'\b{re.escape(kw)}\b', text_lower):
+            return True
+
+    return False
 
 def format_github_comment(response_text: str) -> str:
     return f"{response_text}\n\n---\n*— Rev, AI Developer Advocate [@rev_agent](https://x.com/rev_agent)*"
