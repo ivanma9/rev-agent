@@ -12,3 +12,7 @@ def test_scheduler_has_jobs():
     assert "weekly_content" in job_ids
     assert "weekly_report" in job_ids
     assert "community_scan" in job_ids
+
+def test_scheduler_run_now_has_x_post():
+    from src.scheduler import TASKS
+    assert "x_post" in TASKS
