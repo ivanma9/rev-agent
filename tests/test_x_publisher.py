@@ -25,8 +25,8 @@ def test_split_into_thread_numbered():
     from src.tools.x_publisher import split_into_thread
     long_text = ("Word " * 60).strip()  # ~300 chars
     tweets = split_into_thread(long_text)
-    if len(tweets) > 1:
-        assert tweets[0].endswith("(1/2)") or "1/" in tweets[0]
+    assert len(tweets) > 1
+    assert tweets[0].endswith("(1/2)")
 
 
 def test_post_tweet_dry_run():
@@ -42,7 +42,7 @@ def test_post_thread_dry_run():
     long_text = ("Word " * 60).strip()
     result = post_tweet(long_text, dry_run=True)
     assert result["posted"] is True
-    assert result["tweet_count"] >= 1
+    assert result["tweet_count"] >= 2
 
 
 def test_post_tweet_logs_interaction():
@@ -51,6 +51,16 @@ def test_post_tweet_logs_interaction():
     store = Store(":memory:")
     post_tweet("Test tweet", dry_run=True, store=store)
     assert store.interaction_count_this_week() == 1
+
+
+def test_split_into_thread_10_plus_tweets():
+    from src.tools.x_publisher import split_into_thread, MAX_TWEET_LEN
+    # Generate text that produces 10+ tweets
+    long_text = ("Word " * 700).strip()  # ~3500 chars → 10+ tweets at 271 chars each
+    tweets = split_into_thread(long_text)
+    assert len(tweets) >= 10
+    for t in tweets:
+        assert len(t) <= MAX_TWEET_LEN, f"Tweet too long ({len(t)}): {t[:50]}"
 
 
 def test_format_content_tweet():

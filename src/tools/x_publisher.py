@@ -10,8 +10,8 @@ load_dotenv()
 log = logging.getLogger(__name__)
 
 MAX_TWEET_LEN = 280
-# Reserve space for thread numbering " (N/M)" — max 8 chars
-THREAD_BODY_LEN = MAX_TWEET_LEN - 8
+# Reserve space for thread numbering " (N/M)" — max 9 chars covers up to " (99/99)"
+THREAD_BODY_LEN = MAX_TWEET_LEN - 9
 
 
 def _get_client() -> tweepy.Client:
