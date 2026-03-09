@@ -1,13 +1,17 @@
 # src/tools/publisher.py
 import re
+import logging
 from pathlib import Path
 from datetime import datetime
 from dotenv import load_dotenv
 import os
 from github import Github, Auth
 from src.store import Store
+from src.tools.x_publisher import post_tweet, format_content_tweet
 
 load_dotenv()
+
+log = logging.getLogger(__name__)
 
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GITHUB_REPO = "ivanma9/rev-agent"
@@ -51,7 +55,7 @@ def publish_to_github(title: str, body: str, content_type: str) -> str:
     print(f"✓ Published: {url}")
     return url
 
-def publish_pending(store: Store = None, limit: int = 2) -> list[dict]:
+def publish_pending(store: Store = None, limit: int = 2, x_dry_run: bool = False) -> list[dict]:
     if store is None:
         store = Store()
 
@@ -62,6 +66,11 @@ def publish_pending(store: Store = None, limit: int = 2) -> list[dict]:
         try:
             url = publish_to_github(item["title"], item["body"], item["content_type"])
             store.mark_published(item["id"], url=url)
+            # Cross-post to X
+            tweet_text = format_content_tweet(item["title"], url, item["content_type"])
+            x_result = post_tweet(tweet_text, dry_run=x_dry_run, store=store)
+            if x_result.get("posted"):
+                log.info(f"Cross-posted to X: {x_result.get('url', '[dry run]')}")
             published.append({"title": item["title"], "url": url})
         except Exception as e:
             print(f"✗ Failed to publish '{item['title']}': {e}")
