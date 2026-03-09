@@ -21,4 +21,5 @@ def test_scheduler_run_now_has_x_post():
     tasks = _build_tasks(Store(":memory:"))
     assert "x_post" in tasks
     assert "feedback_submit" in tasks
+    assert "build_site" in tasks
     assert "sync" in tasks

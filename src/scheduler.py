@@ -80,6 +80,8 @@ class RevScheduler:
             return
         from src.tools.publisher import publish_pending
         publish_pending(self.store)
+        from src.tools.build_site import build_full_site
+        build_full_site(self.store)
 
     def _run_community_scan(self):
         log.info("Scanning community channels...")
@@ -117,6 +119,7 @@ def _build_tasks(store: Store) -> dict:
         "report": lambda: __import__("src.tools.weekly_report", fromlist=["save_and_publish_report"]).save_and_publish_report(store),
         "feedback": lambda: __import__("src.tools.product_feedback", fromlist=["generate_weekly_feedback"]).generate_weekly_feedback(store),
         "feedback_submit": lambda: __import__("src.tools.feedback_submitter", fromlist=["submit_feedback_by_email"]).submit_feedback_by_email(store, dry_run=False),
+        "build_site": lambda: __import__("src.tools.build_site", fromlist=["build_full_site"]).build_full_site(store),
         "x_post": lambda: __import__("src.tools.x_publisher", fromlist=["post_tweet"]).post_tweet(
             "Rev weekly update: content published, community monitored. "
             "github.com/ivanma9/rev-agent #RevenueCat #AgentDev",

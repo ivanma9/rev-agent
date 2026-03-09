@@ -83,6 +83,47 @@ def test_render_blog_index():
     assert "</html>" in html
 
 
+def test_build_full_site(tmp_path):
+    from src.tools.build_site import build_full_site
+    from src.store import Store
+
+    store = Store(":memory:")
+    # Seed some published content
+    store.queue_content("Test Post", "blog", "# Hello\n\nWorld")
+    items = store.get_pending_content()
+    store.mark_published(items[0]["id"], url="https://example.com")
+    store.log_interaction("github", "https://github.com/test", "test interaction")
+
+    # Create a fake content file
+    content_dir = tmp_path / "content"
+    content_dir.mkdir()
+    (content_dir / "2026-03-09-test-post.md").write_text('''---
+title: "Test Post"
+date: 2026-03-09
+type: blog
+author: Rev
+---
+
+# Hello
+
+World''')
+
+    docs_dir = tmp_path / "docs"
+    docs_dir.mkdir()
+    (docs_dir / "style.css").write_text("/* test */")
+
+    build_full_site(store=store, content_dir=content_dir, docs_dir=docs_dir)
+
+    assert (docs_dir / "index.html").exists()
+    assert (docs_dir / "blog" / "index.html").exists()
+    assert (docs_dir / "blog" / "test-post.html").exists()
+    assert (docs_dir / "feed.xml").exists()
+
+    # Verify dashboard has KPI data
+    dashboard = (docs_dir / "index.html").read_text()
+    assert "1" in dashboard  # 1 published
+
+
 def test_render_rss_feed():
     from src.tools.build_site import render_rss_feed
     posts = [

@@ -5,6 +5,9 @@ import logging
 from pathlib import Path
 from datetime import datetime
 
+from src.tools.publish_site import render_letter_to_html
+from src.store import Store
+
 log = logging.getLogger(__name__)
 
 DOCS_DIR = Path("docs")
@@ -208,3 +211,90 @@ def render_rss_feed(posts: list[dict]) -> str:
 {items_xml}
   </channel>
 </rss>'''
+
+
+def build_full_site(
+    store: Store = None,
+    content_dir: Path = None,
+    docs_dir: Path = None,
+) -> dict:
+    """Build the full static site from published content and store KPIs."""
+    if store is None:
+        store = Store()
+    if content_dir is None:
+        content_dir = CONTENT_DIR
+    if docs_dir is None:
+        docs_dir = DOCS_DIR
+
+    content_dir = Path(content_dir)
+    docs_dir = Path(docs_dir)
+    blog_dir = docs_dir / "blog"
+    blog_dir.mkdir(parents=True, exist_ok=True)
+
+    # Collect all content markdown files
+    md_files = sorted(content_dir.glob("*.md"), reverse=True)
+    posts = []
+
+    for md_file in md_files:
+        text = md_file.read_text()
+        meta, body = parse_frontmatter(text)
+        if not meta.get("title"):
+            continue
+
+        body_html = render_letter_to_html(body)
+        slug = md_file.stem
+        # Extract slug without date prefix (e.g. "2026-03-09-test-post" -> "test-post")
+        slug_parts = slug.split("-", 3)
+        if len(slug_parts) > 3:
+            clean_slug = slug_parts[3]
+        else:
+            clean_slug = slug
+
+        post_data = {
+            "title": meta["title"],
+            "date": meta.get("date", ""),
+            "type": meta.get("type", "post"),
+            "slug": clean_slug,
+            "preview": body[:150].replace("#", "").replace("\n", " ").strip(),
+        }
+        posts.append(post_data)
+
+        # Write individual post page
+        post_html = render_post_html(
+            title=meta["title"],
+            date=meta.get("date", ""),
+            content_type=meta.get("type", "post"),
+            body_html=body_html,
+        )
+        (blog_dir / f"{clean_slug}.html").write_text(post_html)
+
+    # Get KPIs from store
+    published_count = len(store.get_published_content())
+    interaction_count = store.interaction_count_this_week()
+    feedback_count = len(store.get_feedback(submitted=True))
+
+    # Write dashboard
+    dashboard_html = render_dashboard_html(
+        published_count=published_count,
+        interaction_count=interaction_count,
+        feedback_count=feedback_count,
+        recent_posts=posts[:5],
+    )
+    (docs_dir / "index.html").write_text(dashboard_html)
+
+    # Write blog index
+    blog_index_html = render_blog_index(posts)
+    (blog_dir / "index.html").write_text(blog_index_html)
+
+    # Write RSS feed
+    rss_xml = render_rss_feed(posts)
+    (docs_dir / "feed.xml").write_text(rss_xml)
+
+    log.info(f"Site built: {len(posts)} posts, dashboard, blog index, RSS feed")
+    return {"posts": len(posts), "dashboard": True, "rss": True}
+
+
+if __name__ == "__main__":
+    store = Store()
+    result = build_full_site(store)
+    print(f"Site built: {result}")
