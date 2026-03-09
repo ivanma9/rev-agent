@@ -92,10 +92,12 @@ class RevScheduler:
     def _run_weekly_report(self):
         log.info("Generating weekly report...")
         if self.dry_run:
-            log.info("[DRY RUN] Would generate report")
+            log.info("[DRY RUN] Would generate report and submit feedback")
             return
         from src.tools.weekly_report import save_and_publish_report
+        from src.tools.feedback_submitter import submit_feedback_by_email
         save_and_publish_report(self.store)
+        submit_feedback_by_email(self.store)
 
     def start(self):
         log.info("Rev scheduler starting...")

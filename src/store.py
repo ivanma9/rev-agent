@@ -100,6 +100,13 @@ class Store:
         )
         self.conn.commit()
 
+    def mark_feedback_submitted(self, feedback_id: int):
+        self.conn.execute(
+            "UPDATE feedback SET submitted=1 WHERE id=?",
+            (feedback_id,)
+        )
+        self.conn.commit()
+
     def get_feedback(self, submitted: bool = False) -> list[dict]:
         rows = self.conn.execute(
             "SELECT * FROM feedback WHERE submitted = ? ORDER BY created_at",
