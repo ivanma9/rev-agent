@@ -39,3 +39,6 @@ def test_publish_pending_cross_posts_to_x():
 
         assert len(results) == 1
         mock_post.assert_called_once()
+        call_kwargs = mock_post.call_args
+        assert call_kwargs.kwargs.get("dry_run") is True
+        assert call_kwargs.kwargs.get("store") is store

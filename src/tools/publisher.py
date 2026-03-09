@@ -71,6 +71,8 @@ def publish_pending(store: Store = None, limit: int = 2, x_dry_run: bool = False
             x_result = post_tweet(tweet_text, dry_run=x_dry_run, store=store)
             if x_result.get("posted"):
                 log.info(f"Cross-posted to X: {x_result.get('url', '[dry run]')}")
+            else:
+                log.warning(f"X cross-post failed: {x_result.get('error', 'unknown error')}")
             published.append({"title": item["title"], "url": url})
         except Exception as e:
             print(f"✗ Failed to publish '{item['title']}': {e}")
