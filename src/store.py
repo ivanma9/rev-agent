@@ -42,6 +42,16 @@ class Store:
                 summary TEXT,
                 created_at TEXT DEFAULT (datetime('now'))
             );
+            CREATE TABLE IF NOT EXISTS drafts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                platform TEXT NOT NULL,
+                url TEXT NOT NULL UNIQUE,
+                title TEXT NOT NULL,
+                body_snippet TEXT,
+                draft_response TEXT NOT NULL,
+                status TEXT DEFAULT 'pending',
+                created_at TEXT DEFAULT (datetime('now'))
+            );
             CREATE TABLE IF NOT EXISTS feedback (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 title TEXT NOT NULL,
@@ -118,6 +128,36 @@ class Store:
         self.conn.execute(
             "INSERT INTO knowledge_versions (source, hash, changed) VALUES (?, ?, ?)",
             (source, hash_val, 1 if changed else 0)
+        )
+        self.conn.commit()
+
+    def save_draft(self, platform: str, url: str, title: str, body_snippet: str, draft_response: str):
+        """Save a draft response. Skips if URL already exists."""
+        try:
+            self.conn.execute(
+                "INSERT OR IGNORE INTO drafts (platform, url, title, body_snippet, draft_response) VALUES (?, ?, ?, ?, ?)",
+                (platform, url, title, body_snippet, draft_response)
+            )
+            self.conn.commit()
+        except Exception:
+            pass
+
+    def get_pending_drafts(self, platform: str = None) -> list[dict]:
+        if platform:
+            rows = self.conn.execute(
+                "SELECT * FROM drafts WHERE status = 'pending' AND platform = ? ORDER BY created_at DESC",
+                (platform,)
+            ).fetchall()
+        else:
+            rows = self.conn.execute(
+                "SELECT * FROM drafts WHERE status = 'pending' ORDER BY created_at DESC"
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def mark_draft(self, draft_id: int, status: str):
+        self.conn.execute(
+            "UPDATE drafts SET status = ? WHERE id = ?",
+            (status, draft_id)
         )
         self.conn.commit()
 
