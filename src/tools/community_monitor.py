@@ -112,6 +112,8 @@ def scan_github_issues(store: Store = None, post_comments: bool = False) -> list
 
         except Exception as e:
             print(f"✗ Failed {repo_name}: {e}")
+            if store:
+                store.log_error("community_monitor", f"Failed {repo_name}: {e}")
 
     return found
 

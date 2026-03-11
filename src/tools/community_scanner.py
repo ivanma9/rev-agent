@@ -235,6 +235,8 @@ def scan_communities(store: Store = None, dry_run: bool = False) -> dict:
             log.info(f"  Drafted: [{item['platform']}] {item['title'][:50]}")
         except Exception as e:
             log.warning(f"  Failed to draft for {item['url']}: {e}")
+            if store:
+                store.log_error("community_scanner", f"Failed to draft: {e}")
 
     return {"scanned": len(all_results), "new": len(new_results), "drafted": saved}
 

@@ -89,6 +89,8 @@ def submit_feedback_by_email(store: Store = None, dry_run: bool = False) -> dict
 
     except Exception as e:
         log.error(f"Failed to send feedback: {e}")
+        if store:
+            store.log_error("feedback_submitter", f"Failed to send feedback: {e}")
         return {"sent": 0, "error": str(e)}
 
 

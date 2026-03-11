@@ -60,51 +60,72 @@ class RevScheduler:
         if self.dry_run:
             log.info("[DRY RUN] Would sync knowledge")
             return
-        from src.tools.knowledge_sync import sync_knowledge
-        sync_knowledge(self.store)
+        try:
+            from src.tools.knowledge_sync import sync_knowledge
+            sync_knowledge(self.store)
+        except Exception as e:
+            log.error(f"Knowledge sync failed: {e}")
+            self.store.log_error("scheduler", f"knowledge_sync failed: {e}")
 
     def _run_weekly_content(self):
         log.info("Generating weekly content + feedback...")
         if self.dry_run:
             log.info("[DRY RUN] Would generate content")
             return
-        from src.tools.content_generator import generate_weekly_content
-        from src.tools.product_feedback import generate_weekly_feedback
-        generate_weekly_content(self.store)
-        generate_weekly_feedback(self.store)
+        try:
+            from src.tools.content_generator import generate_weekly_content
+            from src.tools.product_feedback import generate_weekly_feedback
+            generate_weekly_content(self.store)
+            generate_weekly_feedback(self.store)
+        except Exception as e:
+            log.error(f"Weekly content failed: {e}")
+            self.store.log_error("scheduler", f"weekly_content failed: {e}")
 
     def _run_publish(self):
         log.info("Publishing pending content...")
         if self.dry_run:
             log.info("[DRY RUN] Would publish content")
             return
-        from src.tools.publisher import publish_pending
-        publish_pending(self.store)
         try:
-            from src.tools.build_site import build_full_site
-            build_full_site(self.store)
-        except Exception:
-            log.exception("Site build failed after publish")
+            from src.tools.publisher import publish_pending
+            publish_pending(self.store)
+            try:
+                from src.tools.build_site import build_full_site
+                build_full_site(self.store)
+            except Exception as e:
+                log.exception("Site build failed after publish")
+                self.store.log_error("scheduler", f"build_site failed: {e}")
+        except Exception as e:
+            log.error(f"Publish failed: {e}")
+            self.store.log_error("scheduler", f"publish failed: {e}")
 
     def _run_community_scan(self):
         log.info("Scanning community channels...")
         if self.dry_run:
             log.info("[DRY RUN] Would scan community")
             return
-        from src.tools.community_monitor import scan_github_issues
-        scan_github_issues(self.store, post_comments=True)
-        from src.tools.community_scanner import scan_communities
-        scan_communities(self.store)
+        try:
+            from src.tools.community_monitor import scan_github_issues
+            scan_github_issues(self.store, post_comments=True)
+            from src.tools.community_scanner import scan_communities
+            scan_communities(self.store)
+        except Exception as e:
+            log.error(f"Community scan failed: {e}")
+            self.store.log_error("scheduler", f"community_scan failed: {e}")
 
     def _run_weekly_report(self):
         log.info("Generating weekly report...")
         if self.dry_run:
             log.info("[DRY RUN] Would generate report and submit feedback")
             return
-        from src.tools.weekly_report import save_and_publish_report
-        from src.tools.feedback_submitter import submit_feedback_by_email
-        save_and_publish_report(self.store)
-        submit_feedback_by_email(self.store)
+        try:
+            from src.tools.weekly_report import save_and_publish_report
+            from src.tools.feedback_submitter import submit_feedback_by_email
+            save_and_publish_report(self.store)
+            submit_feedback_by_email(self.store)
+        except Exception as e:
+            log.error(f"Weekly report failed: {e}")
+            self.store.log_error("scheduler", f"weekly_report failed: {e}")
 
     def start(self):
         log.info("Rev scheduler starting...")

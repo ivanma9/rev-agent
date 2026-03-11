@@ -76,6 +76,8 @@ def publish_pending(store: Store = None, limit: int = 2, x_dry_run: bool = False
             published.append({"title": item["title"], "url": url})
         except Exception as e:
             print(f"✗ Failed to publish '{item['title']}': {e}")
+            if store:
+                store.log_error("publisher", f"Failed to publish '{item['title'][:50]}': {e}")
 
     return published
 

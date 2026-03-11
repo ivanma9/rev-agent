@@ -60,6 +60,17 @@ def generate_weekly_report(store: Store = None) -> str:
         for f_item in feedback[:3]:
             lines.append(f"- {f_item['title']}")
 
+    # Errors
+    errors = store.get_recent_errors(limit=5)
+    lines += [
+        "",
+        "## Errors",
+        f"- Errors in last 7 days: {len(errors)}",
+    ]
+    if errors:
+        for e in errors[:3]:
+            lines.append(f"  - [{e['source']}] {e['message'][:60]}")
+
     lines += [
         "",
         "## Growth Experiments",
