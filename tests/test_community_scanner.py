@@ -105,3 +105,48 @@ def test_scan_hn_handles_api_error():
     with patch("src.tools.community_scanner.requests.get", return_value=fake_response):
         results = scan_hn()
     assert results == []
+
+
+def test_review_drafts_approve(monkeypatch):
+    from src.tools.community_scanner import review_drafts
+    from src.store import Store
+
+    store = Store(":memory:")
+    store.save_draft("hn", "https://hn.com/1", "Test Post", "snippet", "My draft response")
+
+    inputs = iter(["y"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(inputs))
+
+    reviewed = review_drafts(store=store)
+    assert reviewed == 1
+    assert len(store.get_pending_drafts()) == 0
+
+
+def test_review_drafts_reject(monkeypatch):
+    from src.tools.community_scanner import review_drafts
+    from src.store import Store
+
+    store = Store(":memory:")
+    store.save_draft("hn", "https://hn.com/1", "Test Post", "snippet", "My draft response")
+
+    inputs = iter(["n"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(inputs))
+
+    reviewed = review_drafts(store=store)
+    assert reviewed == 1
+    assert len(store.get_pending_drafts()) == 0
+
+
+def test_review_drafts_skip(monkeypatch):
+    from src.tools.community_scanner import review_drafts
+    from src.store import Store
+
+    store = Store(":memory:")
+    store.save_draft("hn", "https://hn.com/1", "Test Post", "snippet", "My draft response")
+
+    inputs = iter(["s"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(inputs))
+
+    reviewed = review_drafts(store=store)
+    assert reviewed == 0
+    assert len(store.get_pending_drafts()) == 1

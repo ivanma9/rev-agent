@@ -237,3 +237,58 @@ def scan_communities(store: Store = None, dry_run: bool = False) -> dict:
             log.warning(f"  Failed to draft for {item['url']}: {e}")
 
     return {"scanned": len(all_results), "new": len(new_results), "drafted": saved}
+
+
+def review_drafts(store: Store = None) -> int:
+    """Interactive CLI review of pending drafts. Returns count of reviewed drafts."""
+    if store is None:
+        store = Store()
+
+    drafts = store.get_pending_drafts()
+    if not drafts:
+        print("No pending drafts to review.")
+        return 0
+
+    reviewed = 0
+    for i, draft in enumerate(drafts):
+        print(f"\n{'='*60}")
+        print(f"[{i+1}/{len(drafts)}] {draft['platform'].upper()} — {draft['title']}")
+        print(f"URL: {draft['url']}")
+        if draft.get("body_snippet"):
+            print(f"\nContext: {draft['body_snippet'][:200]}")
+        print(f"\n--- Draft Response ---")
+        print(draft["draft_response"])
+        print(f"--- End Draft ---\n")
+
+        action = input("[y]approve  [n]reject  [s]skip  > ").strip().lower()
+
+        if action == "y":
+            store.mark_draft(draft["id"], "approved")
+            print("✓ Approved")
+            reviewed += 1
+        elif action == "n":
+            store.mark_draft(draft["id"], "rejected")
+            print("✗ Rejected")
+            reviewed += 1
+        else:
+            print("→ Skipped")
+
+    return reviewed
+
+
+if __name__ == "__main__":
+    import sys
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+    store = Store()
+
+    if len(sys.argv) > 1 and sys.argv[1] == "review":
+        count = review_drafts(store)
+        print(f"\nReviewed {count} drafts.")
+    elif len(sys.argv) > 1 and sys.argv[1] == "drafts":
+        drafts = store.get_pending_drafts()
+        print(f"Pending drafts: {len(drafts)}")
+        for d in drafts:
+            print(f"  [{d['platform']}] {d['title'][:60]} — {d['url']}")
+    else:
+        result = scan_communities(store)
+        print(f"\nScan complete: {result}")
