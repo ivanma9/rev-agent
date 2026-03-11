@@ -7,6 +7,11 @@ from dotenv import load_dotenv
 from anthropic import Anthropic
 from src.store import Store
 
+try:
+    import praw
+except ImportError:
+    praw = None
+
 load_dotenv()
 log = logging.getLogger(__name__)
 
@@ -109,10 +114,53 @@ def scan_so(limit: int = 10) -> list[dict]:
 def scan_reddit(limit: int = 10) -> list[dict]:
     """Search Reddit. Requires REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET, REDDIT_USER_AGENT in .env."""
     client_id = os.getenv("REDDIT_CLIENT_ID")
+    client_secret = os.getenv("REDDIT_CLIENT_SECRET")
+    user_agent = os.getenv("REDDIT_USER_AGENT")
+
     if not client_id:
         log.info("Reddit credentials not configured, skipping.")
         return []
-    return []
+
+    if praw is None:
+        log.warning("praw not installed, skipping Reddit. Install with: pip install praw")
+        return []
+
+    results = []
+    seen_ids = set()
+
+    try:
+        reddit = praw.Reddit(
+            client_id=client_id,
+            client_secret=client_secret,
+            user_agent=user_agent,
+        )
+
+        subreddits = ["SaaS", "indiegaming", "openai", "iOSProgramming", "RevenueCat"]
+        search_terms = ["revenuecat", "in-app purchase agent", "subscription billing AI"]
+
+        for sub_name in subreddits:
+            try:
+                subreddit = reddit.subreddit(sub_name)
+                for term in search_terms[:2]:
+                    for submission in subreddit.search(term, sort="new", time_filter="week", limit=5):
+                        if submission.id in seen_ids:
+                            continue
+                        seen_ids.add(submission.id)
+                        results.append({
+                            "platform": "reddit",
+                            "url": f"https://reddit.com{submission.permalink}",
+                            "title": submission.title,
+                            "body": (submission.selftext or "")[:500],
+                            "score": submission.score,
+                        })
+            except Exception as e:
+                log.warning(f"Reddit search failed for r/{sub_name}: {e}")
+
+    except Exception as e:
+        log.warning(f"Reddit connection failed: {e}")
+
+    results.sort(key=lambda x: x["score"], reverse=True)
+    return results[:limit]
 
 
 def generate_draft(title: str, body: str, platform: str) -> str:

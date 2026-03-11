@@ -61,6 +61,41 @@ def test_scan_so_parses_results():
     assert "stackoverflow.com" in results[0]["url"]
 
 
+def test_scan_reddit_skips_without_credentials():
+    from src.tools.community_scanner import scan_reddit
+    with patch.dict(os.environ, {}, clear=True):
+        results = scan_reddit()
+    assert results == []
+
+
+def test_scan_reddit_parses_results():
+    from src.tools.community_scanner import scan_reddit
+    mock_submission = MagicMock()
+    mock_submission.id = "abc123"
+    mock_submission.title = "Best subscription SDK for AI agents?"
+    mock_submission.selftext = "Looking for something to handle billing..."
+    mock_submission.score = 15
+    mock_submission.url = "https://reddit.com/r/SaaS/comments/abc123"
+    mock_submission.permalink = "/r/SaaS/comments/abc123/best_subscription_sdk"
+    mock_submission.num_comments = 3
+
+    mock_subreddit = MagicMock()
+    mock_subreddit.search.return_value = [mock_submission]
+
+    mock_reddit = MagicMock()
+    mock_reddit.subreddit.return_value = mock_subreddit
+
+    mock_praw = MagicMock()
+    mock_praw.Reddit.return_value = mock_reddit
+
+    with patch.dict(os.environ, {"REDDIT_CLIENT_ID": "fake", "REDDIT_CLIENT_SECRET": "fake", "REDDIT_USER_AGENT": "fake"}):
+        with patch("src.tools.community_scanner.praw", mock_praw):
+            results = scan_reddit()
+
+    assert len(results) >= 1
+    assert results[0]["platform"] == "reddit"
+
+
 def test_scan_hn_handles_api_error():
     from src.tools.community_scanner import scan_hn
     fake_response = MagicMock()
