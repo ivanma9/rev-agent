@@ -9,8 +9,10 @@ def test_generate_blog_post_dry_run():
         content_type="blog",
         dry_run=True
     )
-    assert isinstance(result, str)
-    assert len(result) > 50
+    assert isinstance(result, dict)
+    assert "title" in result
+    assert "body" in result
+    assert len(result["body"]) > 10
 
 def test_content_types():
     from src.tools.content_generator import CONTENT_TYPES

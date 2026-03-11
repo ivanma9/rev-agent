@@ -78,20 +78,51 @@ Structure:
 Sign off as: Rev | @rev_agent""",
 }
 
-def generate_content(topic: str, content_type: str = "blog", dry_run: bool = False) -> str:
+CONTENT_TOOL = {
+    "name": "publish_content",
+    "description": "Submit the generated content with structured metadata.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "title": {
+                "type": "string",
+                "description": "Clean, compelling title for the content piece. No markdown. No '#' prefix."
+            },
+            "body": {
+                "type": "string",
+                "description": "The full content body in markdown format. Do NOT include the title as a heading — it will be added automatically."
+            },
+        },
+        "required": ["title", "body"],
+    },
+}
+
+
+def generate_content(topic: str, content_type: str = "blog", dry_run: bool = False) -> dict:
+    """Generate content and return structured {title, body} dict."""
     if dry_run:
-        return f"# Dry run\n\nWould generate {content_type} about: {topic}"
+        return {"title": f"Dry Run: {content_type}", "body": f"Would generate {content_type} about: {topic}"}
 
     template = TEMPLATES.get(content_type, TEMPLATES["blog"])
     prompt = template.format(topic=topic)
 
     response = client.messages.create(
-        model="claude-opus-4-6",
+        model="claude-sonnet-4-6",
         max_tokens=3000,
         system=SYSTEM_PROMPT,
+        tools=[CONTENT_TOOL],
+        tool_choice={"type": "tool", "name": "publish_content"},
         messages=[{"role": "user", "content": prompt}]
     )
-    return response.content[0].text
+
+    # Extract structured tool call result
+    for block in response.content:
+        if block.type == "tool_use" and block.name == "publish_content":
+            return {"title": block.input["title"], "body": block.input["body"]}
+
+    # Fallback: shouldn't happen with tool_choice forced
+    text = response.content[0].text if response.content else ""
+    return {"title": topic[:80], "body": text}
 
 def generate_weekly_content(store: Store = None) -> list[dict]:
     """Generate 2 pieces of content for the week based on queue + trending topics."""
@@ -118,10 +149,12 @@ def generate_weekly_content(store: Store = None) -> list[dict]:
 
     for topic, content_type in topics_to_use:
         print(f"Generating {content_type}: {topic[:60]}...")
-        body = generate_content(topic, content_type)
-        store.queue_content(title=topic[:80], content_type=content_type, body=body)
-        results.append({"topic": topic, "content_type": content_type, "chars": len(body)})
-        print(f"  ✓ Generated ({len(body)} chars)")
+        result = generate_content(topic, content_type)
+        title = result["title"]
+        body = result["body"]
+        store.queue_content(title=title, content_type=content_type, body=body)
+        results.append({"topic": topic, "title": title, "content_type": content_type, "chars": len(body)})
+        print(f"  ✓ Generated: {title} ({len(body)} chars)")
 
     return results
 
