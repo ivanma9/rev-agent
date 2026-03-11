@@ -52,6 +52,12 @@ class Store:
                 status TEXT DEFAULT 'pending',
                 created_at TEXT DEFAULT (datetime('now'))
             );
+            CREATE TABLE IF NOT EXISTS errors (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                source TEXT NOT NULL,
+                message TEXT NOT NULL,
+                created_at TEXT DEFAULT (datetime('now'))
+            );
             CREATE TABLE IF NOT EXISTS feedback (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 title TEXT NOT NULL,
@@ -157,6 +163,20 @@ class Store:
             (status, draft_id)
         )
         self.conn.commit()
+
+    def log_error(self, source: str, message: str):
+        self.conn.execute(
+            "INSERT INTO errors (source, message) VALUES (?, ?)",
+            (source, message)
+        )
+        self.conn.commit()
+
+    def get_recent_errors(self, limit: int = 10) -> list[dict]:
+        rows = self.conn.execute(
+            "SELECT * FROM errors ORDER BY created_at DESC LIMIT ?",
+            (limit,)
+        ).fetchall()
+        return [dict(r) for r in rows]
 
     def get_published_content(self, limit: int = 50) -> list[dict]:
         rows = self.conn.execute(

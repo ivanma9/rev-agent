@@ -87,3 +87,29 @@ def test_draft_dedup_by_url():
     s.save_draft("hn", "https://hn.com/1", "Post", "snippet", "draft2")
     drafts = s.get_pending_drafts()
     assert len(drafts) == 1
+
+
+def test_log_error():
+    from src.store import Store
+    s = Store(":memory:")
+    s.log_error("publisher", "Failed to publish: 403 Forbidden")
+    errors = s.get_recent_errors()
+    assert len(errors) == 1
+    assert errors[0]["source"] == "publisher"
+    assert "403" in errors[0]["message"]
+
+
+def test_get_recent_errors_limit():
+    from src.store import Store
+    s = Store(":memory:")
+    for i in range(10):
+        s.log_error("test", f"Error {i}")
+    errors = s.get_recent_errors(limit=5)
+    assert len(errors) == 5
+
+
+def test_get_recent_errors_empty():
+    from src.store import Store
+    s = Store(":memory:")
+    errors = s.get_recent_errors()
+    assert errors == []
