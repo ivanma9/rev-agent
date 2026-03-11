@@ -93,6 +93,8 @@ class RevScheduler:
             return
         from src.tools.community_monitor import scan_github_issues
         scan_github_issues(self.store, post_comments=True)
+        from src.tools.community_scanner import scan_communities
+        scan_communities(self.store)
 
     def _run_weekly_report(self):
         log.info("Generating weekly report...")
@@ -122,6 +124,7 @@ def _build_tasks(store: Store) -> dict:
         "report": lambda: __import__("src.tools.weekly_report", fromlist=["save_and_publish_report"]).save_and_publish_report(store),
         "feedback": lambda: __import__("src.tools.product_feedback", fromlist=["generate_weekly_feedback"]).generate_weekly_feedback(store),
         "feedback_submit": lambda: __import__("src.tools.feedback_submitter", fromlist=["submit_feedback_by_email"]).submit_feedback_by_email(store, dry_run=False),
+        "scan_communities": lambda: __import__("src.tools.community_scanner", fromlist=["scan_communities"]).scan_communities(store),
         "build_site": lambda: __import__("src.tools.build_site", fromlist=["build_full_site"]).build_full_site(store),
         "x_post": lambda: __import__("src.tools.x_publisher", fromlist=["post_tweet"]).post_tweet(
             "Rev weekly update: content published, community monitored. "

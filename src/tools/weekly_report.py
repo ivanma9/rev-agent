@@ -39,6 +39,16 @@ def generate_weekly_report(store: Store = None) -> str:
         f"- Interactions this week: {interaction_count}",
         f"- Target: 50+",
         f"- Status: {'✅ On track' if interaction_count >= 50 else f'⚠️ Behind ({50 - interaction_count} to go)'}",
+    ]
+
+    # Pending drafts
+    drafts = store.get_pending_drafts()
+    if drafts:
+        lines.append(f"- Pending draft responses: {len(drafts)}")
+        for d in drafts[:3]:
+            lines.append(f"  - [{d['platform']}] {d['title'][:50]}")
+
+    lines += [
         "",
         "## Product Feedback",
         f"- Unsubmitted feedback items: {len(feedback)}",

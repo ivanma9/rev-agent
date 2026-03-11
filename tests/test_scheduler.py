@@ -23,3 +23,7 @@ def test_scheduler_run_now_has_x_post():
     assert "feedback_submit" in tasks
     assert "build_site" in tasks
     assert "sync" in tasks
+
+def test_scheduler_has_community_scan_task():
+    from src.scheduler import TASK_KEYS
+    assert "scan_communities" in TASK_KEYS
