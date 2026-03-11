@@ -133,14 +133,11 @@ class Store:
 
     def save_draft(self, platform: str, url: str, title: str, body_snippet: str, draft_response: str):
         """Save a draft response. Skips if URL already exists."""
-        try:
-            self.conn.execute(
-                "INSERT OR IGNORE INTO drafts (platform, url, title, body_snippet, draft_response) VALUES (?, ?, ?, ?, ?)",
-                (platform, url, title, body_snippet, draft_response)
-            )
-            self.conn.commit()
-        except Exception:
-            pass
+        self.conn.execute(
+            "INSERT OR IGNORE INTO drafts (platform, url, title, body_snippet, draft_response) VALUES (?, ?, ?, ?, ?)",
+            (platform, url, title, body_snippet, draft_response)
+        )
+        self.conn.commit()
 
     def get_pending_drafts(self, platform: str = None) -> list[dict]:
         if platform:
