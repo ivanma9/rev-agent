@@ -290,6 +290,10 @@ if __name__ == "__main__":
         print(f"Pending drafts: {len(drafts)}")
         for d in drafts:
             print(f"  [{d['platform']}] {d['title'][:60]} — {d['url']}")
+    elif len(sys.argv) > 1 and sys.argv[1] == "post_approved":
+        from src.tools.draft_poster import post_approved_drafts
+        result = post_approved_drafts(store)
+        print(f"\nPost approved complete: {result}")
     else:
         result = scan_communities(store)
         print(f"\nScan complete: {result}")
