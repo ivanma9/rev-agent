@@ -19,7 +19,7 @@ export PYTHONPATH="$SCRIPT_DIR"
 mkdir -p "$SCRIPT_DIR/logs"
 
 # Graceful shutdown on SIGTERM
-trap 'echo "Received SIGTERM, shutting down..."; kill "$CHILD_PID" 2>/dev/null; wait "$CHILD_PID" 2>/dev/null; exit 0' SIGTERM
+trap 'echo "Received SIGTERM, shutting down..."; kill "$CHILD_PID" 2>/dev/null; wait "$CHILD_PID" 2>/dev/null || true; exit 0' SIGTERM
 
 echo "Starting Rev scheduler at $(date)"
 python -m src.scheduler &

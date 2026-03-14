@@ -151,6 +151,31 @@ class TestRedditDryRun:
         assert rows["status"] == "posted"
 
 
+class TestFailedStatus:
+    def test_exception_marks_draft_as_failed(self):
+        """When a handler raises unexpectedly, the draft must be marked 'failed', not left as 'approved'."""
+        store = make_store()
+        seed_draft(store, platform="hn", url="https://news.ycombinator.com/item?id=boom")
+        exploding_handler = MagicMock(side_effect=RuntimeError("boom"))
+        with patch("src.tools.draft_poster._PLATFORM_HANDLERS", {"hn": exploding_handler}):
+            result = post_approved_drafts(store)
+        row = store.conn.execute(
+            "SELECT status FROM drafts WHERE url='https://news.ycombinator.com/item?id=boom'"
+        ).fetchone()
+        assert row["status"] == "failed"
+        assert result["failed"] == 1
+        assert result["errors"] == 1
+
+    def test_failed_draft_not_retried(self):
+        """Drafts already in 'failed' status must not be picked up by post_approved_drafts."""
+        store = make_store()
+        seed_draft(store, platform="hn", url="https://news.ycombinator.com/item?id=already_failed", status="failed")
+        result = post_approved_drafts(store)
+        assert result["posted"] == 0
+        assert result["dry_run"] == 0
+        assert result["failed"] == 0
+
+
 class TestSummary:
     def test_summary_fields_present(self):
         store = make_store()
@@ -158,6 +183,7 @@ class TestSummary:
         assert "posted" in result
         assert "dry_run" in result
         assert "errors" in result
+        assert "failed" in result
 
     def test_mixed_platforms_summary(self):
         store = make_store()

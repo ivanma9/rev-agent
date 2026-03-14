@@ -102,11 +102,12 @@ def post_approved_drafts(store: Store = None) -> dict:
     drafts = _get_approved_drafts(store)
     if not drafts:
         print("No approved drafts to post.")
-        return {"posted": 0, "dry_run": 0, "errors": 0}
+        return {"posted": 0, "dry_run": 0, "errors": 0, "failed": 0}
 
     total_posted = 0
     total_dry_run = 0
     total_errors = 0
+    total_failed = 0
 
     for draft in drafts:
         platform = draft["platform"]
@@ -128,10 +129,14 @@ def post_approved_drafts(store: Store = None) -> dict:
         except Exception as e:
             log.error(f"Unexpected error posting draft id={draft['id']}: {e}")
             store.log_error("draft_poster", f"Unexpected error for draft id={draft['id']}: {e}")
+            # Mark as 'failed' so the draft is not retried in future runs.
+            # To retry, manually reset the status back to 'approved' in the database.
+            store.mark_draft(draft["id"], "failed")
+            total_failed += 1
             total_errors += 1
 
-    summary = {"posted": total_posted, "dry_run": total_dry_run, "errors": total_errors}
+    summary = {"posted": total_posted, "dry_run": total_dry_run, "errors": total_errors, "failed": total_failed}
     print(
-        f"\nPost summary: {total_posted} posted, {total_dry_run} dry-run (manual), {total_errors} errors."
+        f"\nPost summary: {total_posted} posted, {total_dry_run} dry-run (manual), {total_errors} errors, {total_failed} failed."
     )
     return summary

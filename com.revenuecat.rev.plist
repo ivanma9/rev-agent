@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  IMPORTANT: This plist contains hardcoded absolute paths (e.g. /Users/ivanma/Desktop/agents/RevCat/).
+  Before loading this file on any machine other than the original, update ALL occurrences of that
+  path to match the actual location of the RevCat directory on the target machine.
+  Search for "/Users/ivanma" and replace with the correct home directory / path.
+-->
 <plist version="1.0">
 <dict>
     <key>Label</key>

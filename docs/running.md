@@ -1,5 +1,14 @@
 # Running Rev
 
+## Setup
+
+> **Warning — hardcoded paths in the plist**
+> `com.revenuecat.rev.plist` contains absolute paths pointing to the original machine
+> (e.g. `/Users/ivanma/Desktop/agents/RevCat/`). Before loading the plist on any other machine,
+> open the file and replace every occurrence of that path with the correct absolute path to the
+> RevCat directory on the target machine. Failing to do so will prevent the LaunchAgent from
+> starting.
+
 ## Background Service (macOS LaunchAgent)
 
 Rev can run as a persistent background service that starts automatically on login and restarts if it crashes.
