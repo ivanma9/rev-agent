@@ -1,15 +1,11 @@
 # src/scheduler.py
-"""Rev — Autonomous Scheduler
+"""Rev — Task Runner
 
-Runs the weekly job loop:
-  Daily:   knowledge sync
-  Monday:  generate content + feedback
-  Tuesday: publish content
-  Friday:  generate + publish weekly report
-  Daily:   community scan (GitHub issues)
+Runs individual tasks on demand (triggered by GitHub Actions cron workflows).
+
+Available tasks: sync, content, publish, community, report, feedback,
+                 feedback_submit, scan_communities, build_site, x_post
 """
-from apscheduler.schedulers.blocking import BlockingScheduler
-from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
 from src.store import Store
 import logging
@@ -17,124 +13,6 @@ import logging
 load_dotenv()
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
-
-class RevScheduler:
-    def __init__(self, dry_run: bool = False):
-        self.dry_run = dry_run
-        self.store = Store()
-        self._scheduler = BackgroundScheduler()
-        self._register_jobs()
-
-    def _register_jobs(self):
-        self._scheduler.add_job(
-            self._run_knowledge_sync,
-            "cron", hour=6, minute=0,
-            id="daily_sync", name="Daily Knowledge Sync"
-        )
-        self._scheduler.add_job(
-            self._run_weekly_content,
-            "cron", day_of_week="mon", hour=8,
-            id="weekly_content", name="Weekly Content Generation"
-        )
-        self._scheduler.add_job(
-            self._run_publish,
-            "cron", day_of_week="tue", hour=10,
-            id="weekly_publish", name="Publish Content"
-        )
-        self._scheduler.add_job(
-            self._run_community_scan,
-            "cron", hour=10, minute=30,
-            id="community_scan", name="Community Monitor"
-        )
-        self._scheduler.add_job(
-            self._run_weekly_report,
-            "cron", day_of_week="fri", hour=16,
-            id="weekly_report", name="Weekly Report"
-        )
-
-    def job_ids(self) -> list[str]:
-        return [job.id for job in self._scheduler.get_jobs()]
-
-    def _run_knowledge_sync(self):
-        log.info("Running knowledge sync...")
-        if self.dry_run:
-            log.info("[DRY RUN] Would sync knowledge")
-            return
-        try:
-            from src.tools.knowledge_sync import sync_knowledge
-            sync_knowledge(self.store)
-        except Exception as e:
-            log.error(f"Knowledge sync failed: {e}")
-            self.store.log_error("scheduler", f"knowledge_sync failed: {e}")
-
-    def _run_weekly_content(self):
-        log.info("Generating weekly content + feedback...")
-        if self.dry_run:
-            log.info("[DRY RUN] Would generate content")
-            return
-        try:
-            from src.tools.content_generator import generate_weekly_content
-            from src.tools.product_feedback import generate_weekly_feedback
-            generate_weekly_content(self.store)
-            generate_weekly_feedback(self.store)
-        except Exception as e:
-            log.error(f"Weekly content failed: {e}")
-            self.store.log_error("scheduler", f"weekly_content failed: {e}")
-
-    def _run_publish(self):
-        log.info("Publishing pending content...")
-        if self.dry_run:
-            log.info("[DRY RUN] Would publish content")
-            return
-        try:
-            from src.tools.publisher import publish_pending
-            publish_pending(self.store)
-            try:
-                from src.tools.build_site import build_full_site
-                build_full_site(self.store)
-            except Exception as e:
-                log.exception("Site build failed after publish")
-                self.store.log_error("scheduler", f"build_site failed: {e}")
-        except Exception as e:
-            log.error(f"Publish failed: {e}")
-            self.store.log_error("scheduler", f"publish failed: {e}")
-
-    def _run_community_scan(self):
-        log.info("Scanning community channels...")
-        if self.dry_run:
-            log.info("[DRY RUN] Would scan community")
-            return
-        try:
-            from src.tools.community_monitor import scan_github_issues
-            scan_github_issues(self.store, post_comments=True)
-            from src.tools.community_scanner import scan_communities
-            scan_communities(self.store)
-        except Exception as e:
-            log.error(f"Community scan failed: {e}")
-            self.store.log_error("scheduler", f"community_scan failed: {e}")
-
-    def _run_weekly_report(self):
-        log.info("Generating weekly report...")
-        if self.dry_run:
-            log.info("[DRY RUN] Would generate report and submit feedback")
-            return
-        try:
-            from src.tools.weekly_report import save_and_publish_report
-            from src.tools.feedback_submitter import submit_feedback_by_email
-            save_and_publish_report(self.store)
-            submit_feedback_by_email(self.store)
-        except Exception as e:
-            log.error(f"Weekly report failed: {e}")
-            self.store.log_error("scheduler", f"weekly_report failed: {e}")
-
-    def start(self):
-        log.info("Rev scheduler starting...")
-        for job in self._scheduler.get_jobs():
-            log.info(f"  Registered: {job.name} ({job.id})")
-        self._scheduler.start()
-
-    def stop(self):
-        self._scheduler.shutdown()
 
 def _build_tasks(store: Store) -> dict:
     return {
@@ -177,12 +55,5 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         run_now(sys.argv[1])
     else:
-        scheduler = RevScheduler()
-        try:
-            scheduler.start()
-            import time
-            while True:
-                time.sleep(60)
-        except KeyboardInterrupt:
-            scheduler.stop()
-            print("Scheduler stopped.")
+        print("Available tasks:", TASK_KEYS)
+        print("Usage: python -m src.scheduler <task>")

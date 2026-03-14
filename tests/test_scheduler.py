@@ -1,18 +1,4 @@
 # tests/test_scheduler.py
-def test_scheduler_imports():
-    from src.scheduler import RevScheduler
-    s = RevScheduler(dry_run=True)
-    assert s is not None
-
-def test_scheduler_has_jobs():
-    from src.scheduler import RevScheduler
-    s = RevScheduler(dry_run=True)
-    job_ids = s.job_ids()
-    assert "daily_sync" in job_ids
-    assert "weekly_content" in job_ids
-    assert "weekly_report" in job_ids
-    assert "community_scan" in job_ids
-
 def test_scheduler_run_now_has_x_post():
     from src.scheduler import TASK_KEYS, _build_tasks
     from src.store import Store
@@ -27,3 +13,9 @@ def test_scheduler_run_now_has_x_post():
 def test_scheduler_has_community_scan_task():
     from src.scheduler import TASK_KEYS
     assert "scan_communities" in TASK_KEYS
+
+def test_task_keys_complete():
+    from src.scheduler import TASK_KEYS
+    expected = {"sync", "content", "publish", "community", "report",
+                "feedback", "feedback_submit", "scan_communities", "build_site", "x_post"}
+    assert expected == set(TASK_KEYS)
