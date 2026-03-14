@@ -65,6 +65,14 @@ class Store:
                 submitted INTEGER DEFAULT 0,
                 created_at TEXT DEFAULT (datetime('now'))
             );
+            CREATE TABLE IF NOT EXISTS analytics (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                content_id INTEGER REFERENCES content(id),
+                platform TEXT NOT NULL,
+                metric TEXT NOT NULL,
+                value INTEGER DEFAULT 1,
+                recorded_at TEXT DEFAULT (datetime('now'))
+            );
         """)
         self.conn.commit()
 
@@ -175,6 +183,43 @@ class Store:
         rows = self.conn.execute(
             "SELECT * FROM errors ORDER BY created_at DESC LIMIT ?",
             (limit,)
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def record_metric(self, content_id: int, platform: str, metric: str, value: int = 1):
+        self.conn.execute(
+            "INSERT INTO analytics (content_id, platform, metric, value) VALUES (?, ?, ?, ?)",
+            (content_id, platform, metric, value)
+        )
+        self.conn.commit()
+
+    def get_analytics(self, content_id: int = None, days: int = 7) -> list[dict]:
+        cutoff = (datetime.now() - timedelta(days=days)).isoformat()
+        if content_id is not None:
+            rows = self.conn.execute(
+                "SELECT * FROM analytics WHERE content_id = ? AND recorded_at > ? ORDER BY recorded_at DESC",
+                (content_id, cutoff)
+            ).fetchall()
+        else:
+            rows = self.conn.execute(
+                "SELECT * FROM analytics WHERE recorded_at > ? ORDER BY recorded_at DESC",
+                (cutoff,)
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_top_content(self, limit: int = 5, days: int = 30) -> list[dict]:
+        cutoff = (datetime.now() - timedelta(days=days)).isoformat()
+        rows = self.conn.execute(
+            """
+            SELECT a.content_id, c.title, SUM(a.value) as total
+            FROM analytics a
+            LEFT JOIN content c ON c.id = a.content_id
+            WHERE a.recorded_at > ?
+            GROUP BY a.content_id
+            ORDER BY total DESC
+            LIMIT ?
+            """,
+            (cutoff, limit)
         ).fetchall()
         return [dict(r) for r in rows]
 

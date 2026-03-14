@@ -11,6 +11,7 @@ def format_status(store: Store) -> str:
     non_ideas = [p for p in pending if p["content_type"] != "idea"]
 
     interactions = store.interaction_count_this_week()
+    analytics_this_week = sum(r["value"] for r in store.get_analytics(days=7))
     feedback_pending = store.get_feedback(submitted=False)
     feedback_submitted = store.get_feedback(submitted=True)
     drafts = store.get_pending_drafts()
@@ -34,6 +35,7 @@ def format_status(store: Store) -> str:
         "=" * 40,
         f"Content:      {len(published)} published | {len(non_ideas)} pending | {len(ideas)} ideas",
         f"Interactions: {interactions} this week (target: 50)",
+        f"Engagement:   {analytics_this_week} metric events this week",
         f"Feedback:     {len(feedback_pending)} pending | {len(feedback_submitted)} submitted",
         f"Drafts:       {len(drafts)} pending review",
         f"Errors:       {error_count} in last 7 days",
