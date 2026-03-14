@@ -1,9 +1,10 @@
 # src/tools/build_site.py
 """Build static site from published content for GitHub Pages."""
-import re
+import html
 import logging
 from pathlib import Path
-from datetime import datetime
+from email.utils import format_datetime
+from datetime import datetime, timezone
 
 from src.tools.publish_site import render_letter_to_html
 from src.store import Store
@@ -190,15 +191,27 @@ def render_blog_index(posts: list[dict]) -> str:
 </html>'''
 
 
+def _to_rfc822(date_str: str) -> str:
+    """Convert an ISO date string (YYYY-MM-DD) to RFC 822 format."""
+    try:
+        dt = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        return format_datetime(dt, usegmt=True)
+    except (ValueError, TypeError):
+        return date_str
+
+
 def render_rss_feed(posts: list[dict]) -> str:
     """Generate RSS 2.0 feed."""
     items = []
     for p in posts:
+        escaped_title = html.escape(p["title"])
+        escaped_preview = html.escape(p.get("preview", "")[:200])
+        pub_date = _to_rfc822(p["date"])
         items.append(f'''    <item>
-      <title>{p["title"]}</title>
+      <title>{escaped_title}</title>
       <link>{SITE_URL}/blog/{p["slug"]}.html</link>
-      <description>{p.get("preview", "")[:200]}</description>
-      <pubDate>{p["date"]}</pubDate>
+      <description>{escaped_preview}</description>
+      <pubDate>{pub_date}</pubDate>
     </item>''')
 
     items_xml = "\n".join(items)

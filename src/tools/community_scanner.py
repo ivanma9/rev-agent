@@ -15,8 +15,6 @@ except ImportError:
 load_dotenv()
 log = logging.getLogger(__name__)
 
-client = Anthropic()
-
 SEARCH_TERMS = [
     "revenuecat",
     "revenue cat",
@@ -165,6 +163,7 @@ def scan_reddit(limit: int = 10) -> list[dict]:
 
 def generate_draft(title: str, body: str, platform: str) -> str:
     """Generate a draft response using Claude Haiku."""
+    client = Anthropic()
     platform_context = {
         "hn": "You're commenting on Hacker News. Be concise, technical, and add genuine value. No marketing speak.",
         "so": "You're answering a Stack Overflow question. Be precise, include code if relevant, cite RevenueCat docs.",
