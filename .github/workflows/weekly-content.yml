@@ -1,0 +1,77 @@
+name: Weekly Content
+on:
+  schedule:
+    - cron: '0 8 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: rev-${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.REV_GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - run: pip install -r requirements.txt
+
+      - name: Run content
+        run: python -m src.scheduler content
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.REV_GITHUB_TOKEN }}
+          GITHUB_USERNAME: ${{ vars.GITHUB_USERNAME }}
+          GITHUB_REPO: ${{ vars.GITHUB_REPO }}
+          REVENUECAT_EMAIL: ${{ secrets.REVENUECAT_EMAIL }}
+          REVENUECAT_PASSWORD: ${{ secrets.REVENUECAT_PASSWORD }}
+          GMAIL: ${{ secrets.GMAIL }}
+          GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
+          REVENUECAT_API_KEY: ${{ secrets.REVENUECAT_API_KEY }}
+          REVENUECAT_PROJECT_ID: ${{ secrets.REVENUECAT_PROJECT_ID }}
+          LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
+          LANGSMITH_PROJECT: ${{ vars.LANGSMITH_PROJECT }}
+          LANGCHAIN_TRACING_V2: ${{ vars.LANGCHAIN_TRACING_V2 }}
+          X_API_KEY: ${{ secrets.X_API_KEY }}
+          X_API_SECRET: ${{ secrets.X_API_SECRET }}
+          X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
+          X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
+          X_ACCESS_TOKEN_SECRET: ${{ secrets.X_ACCESS_TOKEN_SECRET }}
+
+      - name: Run feedback
+        run: python -m src.scheduler feedback
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.REV_GITHUB_TOKEN }}
+          GITHUB_USERNAME: ${{ vars.GITHUB_USERNAME }}
+          GITHUB_REPO: ${{ vars.GITHUB_REPO }}
+          REVENUECAT_EMAIL: ${{ secrets.REVENUECAT_EMAIL }}
+          REVENUECAT_PASSWORD: ${{ secrets.REVENUECAT_PASSWORD }}
+          GMAIL: ${{ secrets.GMAIL }}
+          GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
+          REVENUECAT_API_KEY: ${{ secrets.REVENUECAT_API_KEY }}
+          REVENUECAT_PROJECT_ID: ${{ secrets.REVENUECAT_PROJECT_ID }}
+          LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
+          LANGSMITH_PROJECT: ${{ vars.LANGSMITH_PROJECT }}
+          LANGCHAIN_TRACING_V2: ${{ vars.LANGCHAIN_TRACING_V2 }}
+          X_API_KEY: ${{ secrets.X_API_KEY }}
+          X_API_SECRET: ${{ secrets.X_API_SECRET }}
+          X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
+          X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
+          X_ACCESS_TOKEN_SECRET: ${{ secrets.X_ACCESS_TOKEN_SECRET }}
+
+      - name: Commit DB
+        run: |
+          git config user.name "rev-bot"
+          git config user.email "rev-bot@users.noreply.github.com"
+          git add data/rev.db
+          git diff --cached --quiet || git commit -m "chore(db): update rev.db [skip ci]"
+          git pull --rebase
+          git push
