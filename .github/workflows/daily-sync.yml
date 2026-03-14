@@ -28,8 +28,8 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.REV_GITHUB_TOKEN }}
-          GITHUB_USERNAME: ${{ vars.GITHUB_USERNAME }}
-          GITHUB_REPO: ${{ vars.GITHUB_REPO }}
+          GITHUB_USERNAME: ${{ github.repository_owner }}
+          GITHUB_REPO: ${{ github.event.repository.name }}
           REVENUECAT_EMAIL: ${{ secrets.REVENUECAT_EMAIL }}
           REVENUECAT_PASSWORD: ${{ secrets.REVENUECAT_PASSWORD }}
           GMAIL: ${{ secrets.GMAIL }}
