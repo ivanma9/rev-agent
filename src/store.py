@@ -171,6 +171,14 @@ class Store:
         )
         self.conn.commit()
 
+    def get_draft_by_url(self, url: str) -> dict | None:
+        """Fetch the most recently saved draft for a given URL."""
+        row = self.conn.execute(
+            "SELECT * FROM drafts WHERE url = ? ORDER BY created_at DESC LIMIT 1",
+            (url,)
+        ).fetchone()
+        return dict(row) if row else None
+
     def get_pending_drafts(self, platform: str = None) -> list[dict]:
         if platform:
             rows = self.conn.execute(

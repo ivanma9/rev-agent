@@ -6,11 +6,7 @@ import requests
 from dotenv import load_dotenv
 from anthropic import Anthropic
 from src.store import Store
-
-try:
-    import praw
-except ImportError:
-    praw = None
+from src.tools.draft_scorer import score_and_post_pipeline
 
 load_dotenv()
 log = logging.getLogger(__name__)
@@ -110,52 +106,63 @@ def scan_so(limit: int = 10) -> list[dict]:
 
 
 def scan_reddit(limit: int = 10) -> list[dict]:
-    """Search Reddit. Requires REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET, REDDIT_USER_AGENT in .env."""
-    client_id = os.getenv("REDDIT_CLIENT_ID")
-    client_secret = os.getenv("REDDIT_CLIENT_SECRET")
-    user_agent = os.getenv("REDDIT_USER_AGENT")
-
-    if not client_id:
-        log.info("Reddit credentials not configured, skipping.")
-        return []
-
-    if praw is None:
-        log.warning("praw not installed, skipping Reddit. Install with: pip install praw")
-        return []
-
+    """Search Reddit using public JSON endpoints — no auth required."""
     results = []
     seen_ids = set()
+    headers = {"User-Agent": "RevCat-Agent/1.0"}
 
-    try:
-        reddit = praw.Reddit(
-            client_id=client_id,
-            client_secret=client_secret,
-            user_agent=user_agent,
-        )
+    search_queries = ["revenuecat", "in-app purchase agent", "subscription billing AI"]
+    subreddits = ["SaaS", "iOSProgramming", "RevenueCat", "openai"]
 
-        subreddits = ["SaaS", "indiegaming", "openai", "iOSProgramming", "RevenueCat"]
-        search_terms = ["revenuecat", "in-app purchase agent", "subscription billing AI"]
+    # Search across Reddit
+    for query in search_queries:
+        try:
+            resp = requests.get(
+                "https://www.reddit.com/search.json",
+                params={"q": query, "sort": "new", "limit": 5, "t": "week"},
+                headers=headers,
+                timeout=10,
+            )
+            resp.raise_for_status()
+            for post in resp.json().get("data", {}).get("children", []):
+                d = post["data"]
+                if d["id"] in seen_ids:
+                    continue
+                seen_ids.add(d["id"])
+                results.append({
+                    "platform": "reddit",
+                    "url": f"https://reddit.com{d['permalink']}",
+                    "title": d.get("title", ""),
+                    "body": (d.get("selftext") or "")[:500],
+                    "score": d.get("score", 0),
+                })
+        except Exception as e:
+            log.warning(f"Reddit search failed for '{query}': {e}")
 
-        for sub_name in subreddits:
-            try:
-                subreddit = reddit.subreddit(sub_name)
-                for term in search_terms[:2]:
-                    for submission in subreddit.search(term, sort="new", time_filter="week", limit=5):
-                        if submission.id in seen_ids:
-                            continue
-                        seen_ids.add(submission.id)
-                        results.append({
-                            "platform": "reddit",
-                            "url": f"https://reddit.com{submission.permalink}",
-                            "title": submission.title,
-                            "body": (submission.selftext or "")[:500],
-                            "score": submission.score,
-                        })
-            except Exception as e:
-                log.warning(f"Reddit search failed for r/{sub_name}: {e}")
-
-    except Exception as e:
-        log.warning(f"Reddit connection failed: {e}")
+    # Also scan specific subreddits for new posts
+    for sub in subreddits:
+        try:
+            resp = requests.get(
+                f"https://www.reddit.com/r/{sub}/new.json",
+                params={"limit": 5},
+                headers=headers,
+                timeout=10,
+            )
+            resp.raise_for_status()
+            for post in resp.json().get("data", {}).get("children", []):
+                d = post["data"]
+                if d["id"] in seen_ids:
+                    continue
+                seen_ids.add(d["id"])
+                results.append({
+                    "platform": "reddit",
+                    "url": f"https://reddit.com{d['permalink']}",
+                    "title": d.get("title", ""),
+                    "body": (d.get("selftext") or "")[:500],
+                    "score": d.get("score", 0),
+                })
+        except Exception as e:
+            log.warning(f"Reddit subreddit fetch failed for r/{sub}: {e}")
 
     results.sort(key=lambda x: x["score"], reverse=True)
     return results[:limit]
@@ -216,6 +223,8 @@ def scan_communities(store: Store = None, dry_run: bool = False) -> dict:
     log.info(f"New after dedup: {len(new_results)} (filtered {len(all_results) - len(new_results)})")
 
     saved = 0
+    posted = 0
+    discarded = 0
     for item in new_results[:10]:
         if dry_run:
             log.info(f"  [DRY RUN] Would draft for: {item['title'][:60]}")
@@ -232,12 +241,22 @@ def scan_communities(store: Store = None, dry_run: bool = False) -> dict:
             )
             saved += 1
             log.info(f"  Drafted: [{item['platform']}] {item['title'][:50]}")
+
+            draft_row = store.get_draft_by_url(item["url"])
+            if draft_row:
+                result = score_and_post_pipeline(draft_row, store)
+                if result.get("action") == "posted":
+                    posted += 1
+                    log.info(f"  Posted: [{item['platform']}] {item['title'][:50]} (score={result.get('score')})")
+                elif result.get("action") == "discarded":
+                    discarded += 1
+                    log.info(f"  Discarded: [{item['platform']}] {item['title'][:50]} (score={result.get('score')})")
         except Exception as e:
             log.warning(f"  Failed to draft for {item['url']}: {e}")
             if store:
                 store.log_error("community_scanner", f"Failed to draft: {e}")
 
-    return {"scanned": len(all_results), "new": len(new_results), "drafted": saved}
+    return {"scanned": len(all_results), "new": len(new_results), "drafted": saved, "posted": posted, "discarded": discarded}
 
 
 def review_drafts(store: Store = None) -> int:

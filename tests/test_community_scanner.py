@@ -137,6 +137,72 @@ def test_review_drafts_reject(monkeypatch):
     assert len(store.get_pending_drafts()) == 0
 
 
+def test_scan_communities_calls_pipeline():
+    from src.tools.community_scanner import scan_communities
+    from src.store import Store
+
+    store = Store(":memory:")
+
+    fake_item = {
+        "platform": "hn",
+        "url": "https://news.ycombinator.com/item?id=999",
+        "title": "RevenueCat for AI agents",
+        "body": "How do I use RevenueCat?",
+        "score": 10,
+    }
+
+    pipeline_result = {"action": "posted", "score": 8.0, "attempts": 1}
+
+    with patch("src.tools.community_scanner.scan_hn", return_value=[fake_item]), \
+         patch("src.tools.community_scanner.scan_so", return_value=[]), \
+         patch("src.tools.community_scanner.scan_reddit", return_value=[]), \
+         patch("src.tools.community_scanner.generate_draft", return_value="Draft text"), \
+         patch("src.tools.community_scanner.score_and_post_pipeline", return_value=pipeline_result) as mock_pipeline:
+        result = scan_communities(store=store)
+
+    mock_pipeline.assert_called_once()
+    assert result["posted"] == 1
+    assert result["drafted"] == 1
+
+
+def test_scan_communities_counts_posted_and_discarded():
+    from src.tools.community_scanner import scan_communities
+    from src.store import Store
+
+    store = Store(":memory:")
+
+    item1 = {
+        "platform": "hn",
+        "url": "https://news.ycombinator.com/item?id=1001",
+        "title": "RevenueCat question 1",
+        "body": "Body 1",
+        "score": 10,
+    }
+    item2 = {
+        "platform": "so",
+        "url": "https://stackoverflow.com/q/1002",
+        "title": "RevenueCat question 2",
+        "body": "Body 2",
+        "score": 5,
+    }
+
+    pipeline_results = iter([
+        {"action": "posted", "score": 8.0, "attempts": 1},
+        {"action": "discarded", "score": 3.0, "attempts": 3},
+    ])
+
+    with patch("src.tools.community_scanner.scan_hn", return_value=[item1]), \
+         patch("src.tools.community_scanner.scan_so", return_value=[item2]), \
+         patch("src.tools.community_scanner.scan_reddit", return_value=[]), \
+         patch("src.tools.community_scanner.generate_draft", return_value="Draft text"), \
+         patch("src.tools.community_scanner.score_and_post_pipeline", side_effect=pipeline_results):
+        result = scan_communities(store=store)
+
+    assert result["posted"] == 1
+    assert result["discarded"] == 1
+    assert result["drafted"] == 2
+
+
 def test_review_drafts_skip(monkeypatch):
     from src.tools.community_scanner import review_drafts
     from src.store import Store
