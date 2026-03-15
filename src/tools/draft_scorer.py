@@ -157,13 +157,9 @@ def score_and_post_pipeline(draft: dict, store) -> dict:
             handler = handlers.get(draft["platform"])
             if handler:
                 try:
-                    result = handler(draft, store)
-                    # Support 2-tuple (posted, dry_run) for now
-                    if isinstance(result, tuple) and len(result) >= 3:
-                        posted, dry_run, post_url = result[0], result[1], result[2]
-                        if post_url:
-                            store.record_post_url(draft["id"], post_url)
-                    # 2-tuple
+                    posted, dry_run, post_url = handler(draft, store)
+                    if post_url:
+                        store.record_post_url(draft["id"], post_url)
                 except Exception as e:
                     log.error(f"Post handler failed for draft id={draft['id']}: {e}")
                     store.log_error("draft_scorer", f"Post handler failed for draft id={draft['id']}: {e}")

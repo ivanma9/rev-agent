@@ -28,20 +28,20 @@ def _dry_run_print(draft: dict, reason: str = "manual posting required"):
     print(f"--- End Draft ---")
 
 
-def _post_hn(draft: dict, store: Store) -> tuple[bool, bool]:
-    """HN has no public comment API — always dry run. Returns (posted, dry_run)."""
+def _post_hn(draft: dict, store: Store) -> tuple[bool, bool, str | None]:
+    """HN has no public comment API — always dry run. Returns (posted, dry_run, post_url)."""
     _dry_run_print(draft, reason="HN has no public API for programmatic posting")
-    return False, True
+    return False, True, None
 
 
-def _post_so(draft: dict, store: Store) -> tuple[bool, bool]:
-    """SO API requires OAuth write auth — always dry run. Returns (posted, dry_run)."""
+def _post_so(draft: dict, store: Store) -> tuple[bool, bool, str | None]:
+    """SO API requires OAuth write auth — always dry run. Returns (posted, dry_run, post_url)."""
     _dry_run_print(draft, reason="SO API requires OAuth write access")
-    return False, True
+    return False, True, None
 
 
-def _post_reddit(draft: dict, store: Store) -> tuple[bool, bool]:
-    """Post to Reddit via PRAW if configured, else dry run. Returns (posted, dry_run)."""
+def _post_reddit(draft: dict, store: Store) -> tuple[bool, bool, str | None]:
+    """Post to Reddit via PRAW if configured, else dry run. Returns (posted, dry_run, post_url)."""
     client_id = os.getenv("REDDIT_CLIENT_ID")
     client_secret = os.getenv("REDDIT_CLIENT_SECRET")
     user_agent = os.getenv("REDDIT_USER_AGENT")
@@ -50,15 +50,15 @@ def _post_reddit(draft: dict, store: Store) -> tuple[bool, bool]:
 
     if not client_id:
         _dry_run_print(draft, reason="Reddit credentials not configured")
-        return False, True
+        return False, True, None
 
     if praw is None:
         _dry_run_print(draft, reason="praw not installed (pip install praw)")
-        return False, True
+        return False, True, None
 
     if not reddit_username or not reddit_password:
         _dry_run_print(draft, reason="REDDIT_USERNAME / REDDIT_PASSWORD not set for write access")
-        return False, True
+        return False, True, None
 
     try:
         reddit = praw.Reddit(
@@ -72,12 +72,13 @@ def _post_reddit(draft: dict, store: Store) -> tuple[bool, bool]:
         url = draft["url"]
         submission = reddit.submission(url=url)
         comment = submission.reply(draft["draft_response"])
-        print(f"[POSTED — REDDIT] Comment posted: https://reddit.com{comment.permalink}")
-        return True, False
+        post_url = f"https://reddit.com{comment.permalink}"
+        print(f"[POSTED — REDDIT] Comment posted: {post_url}")
+        return True, False, post_url
     except Exception as e:
         log.warning(f"Reddit post failed for {draft['url']}: {e}")
         store.log_error("draft_poster", f"Reddit post failed for {draft['url']}: {e}")
-        return False, False
+        return False, False, None
 
 
 _PLATFORM_HANDLERS = {
@@ -120,8 +121,10 @@ def post_approved_drafts(store: Store = None) -> dict:
             continue
 
         try:
-            was_posted, was_dry_run = handler(draft, store)
+            was_posted, was_dry_run, post_url = handler(draft, store)
             store.mark_draft(draft["id"], "posted")
+            if post_url is not None:
+                store.record_post_url(draft["id"], post_url)
             if was_posted:
                 total_posted += 1
             elif was_dry_run:

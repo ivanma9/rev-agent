@@ -151,6 +151,42 @@ class TestRedditDryRun:
         assert rows["status"] == "posted"
 
 
+class TestRedditPostReturnsPostUrl:
+    def test_reddit_post_returns_post_url(self):
+        """When Reddit credentials are present and PRAW posts successfully, handler returns post_url."""
+        from src.tools.draft_poster import _post_reddit
+        store = make_store()
+        seed_draft(store, platform="reddit", url="https://reddit.com/r/test/comments/abc/title")
+        draft = store.conn.execute("SELECT * FROM drafts").fetchone()
+        draft = dict(draft)
+
+        mock_comment = MagicMock()
+        mock_comment.permalink = "/r/test/comments/abc/def"
+
+        mock_submission = MagicMock()
+        mock_submission.reply.return_value = mock_comment
+
+        mock_reddit_instance = MagicMock()
+        mock_reddit_instance.submission.return_value = mock_submission
+
+        mock_praw = MagicMock()
+        mock_praw.Reddit.return_value = mock_reddit_instance
+
+        with patch("src.tools.draft_poster.praw", mock_praw):
+            with patch.dict("os.environ", {
+                "REDDIT_CLIENT_ID": "fakeid",
+                "REDDIT_CLIENT_SECRET": "fakesecret",
+                "REDDIT_USER_AGENT": "fakeagent",
+                "REDDIT_USERNAME": "fakeuser",
+                "REDDIT_PASSWORD": "fakepass",
+            }):
+                was_posted, was_dry_run, post_url = _post_reddit(draft, store)
+
+        assert was_posted is True
+        assert was_dry_run is False
+        assert post_url == "https://reddit.com/r/test/comments/abc/def"
+
+
 class TestFailedStatus:
     def test_exception_marks_draft_as_failed(self):
         """When a handler raises unexpectedly, the draft must be marked 'failed', not left as 'approved'."""
