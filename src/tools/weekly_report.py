@@ -71,6 +71,32 @@ def generate_weekly_report(store: Store = None) -> str:
         for e in errors[:3]:
             lines.append(f"  - [{e['source']}] {e['message'][:60]}")
 
+    # Auto-Post Scorecard
+    stats = store.get_draft_stats_this_week()
+    posts_published = stats["posts_published"]
+    drafts_created = stats["drafts_created"]
+    discarded = stats["discarded"]
+    avg_score = stats["avg_score_posted"]
+    errors_this_week = stats["errors_this_week"]
+
+    if drafts_created > 0:
+        success_rate = f"{posts_published / drafts_created * 100:.0f}%"
+    else:
+        success_rate = "N/A"
+
+    avg_score_str = f"{avg_score:.1f}/10" if avg_score is not None else "N/A"
+
+    lines += [
+        "",
+        "## Auto-Post Scorecard",
+        f"- Posts published this week: {posts_published}",
+        f"- Communities scanned (drafts created): {drafts_created}",
+        f"- Auto-post success rate: {success_rate} (posted / total drafts created)",
+        f"- Discarded: {discarded}",
+        f"- Avg score of posted drafts: {avg_score_str}",
+        f"- Errors this week: {errors_this_week} (scheduler uptime proxy)",
+    ]
+
     lines += [
         "",
         "## Growth Experiments",
