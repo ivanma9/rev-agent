@@ -113,3 +113,79 @@ def test_get_recent_errors_empty():
     s = Store(":memory:")
     errors = s.get_recent_errors()
     assert errors == []
+
+
+# ── Task 1: new drafts columns ────────────────────────────────────────────────
+
+def test_drafts_has_score_columns():
+    """After migration, drafts table must have score, score_attempts, post_url."""
+    from src.store import Store
+    s = Store(":memory:")
+    cols = [row[1] for row in s.conn.execute("PRAGMA table_info(drafts)").fetchall()]
+    assert "score" in cols
+    assert "score_attempts" in cols
+    assert "post_url" in cols
+
+
+def test_update_draft_score():
+    from src.store import Store
+    s = Store(":memory:")
+    s.save_draft("hn", "https://hn.com/2", "Post", "snippet", "draft")
+    draft_id = s.get_pending_drafts()[0]["id"]
+    s.update_draft_score(draft_id, 8.5, 1)
+    row = s.conn.execute("SELECT score, score_attempts FROM drafts WHERE id=?", (draft_id,)).fetchone()
+    assert row["score"] == 8.5
+    assert row["score_attempts"] == 1
+
+
+def test_update_draft_response():
+    from src.store import Store
+    s = Store(":memory:")
+    s.save_draft("hn", "https://hn.com/3", "Post", "snippet", "original draft")
+    draft_id = s.get_pending_drafts()[0]["id"]
+    s.update_draft_response(draft_id, "improved draft")
+    row = s.conn.execute("SELECT draft_response FROM drafts WHERE id=?", (draft_id,)).fetchone()
+    assert row["draft_response"] == "improved draft"
+
+
+def test_record_post_url():
+    from src.store import Store
+    s = Store(":memory:")
+    s.save_draft("reddit", "https://reddit.com/r/test/1", "Post", "snippet", "draft")
+    draft_id = s.get_pending_drafts()[0]["id"]
+    s.record_post_url(draft_id, "https://reddit.com/r/test/1/comment/abc")
+    row = s.conn.execute("SELECT post_url FROM drafts WHERE id=?", (draft_id,)).fetchone()
+    assert row["post_url"] == "https://reddit.com/r/test/1/comment/abc"
+
+
+def test_get_draft_stats_this_week_empty():
+    from src.store import Store
+    s = Store(":memory:")
+    stats = s.get_draft_stats_this_week()
+    assert stats["posts_published"] == 0
+    assert stats["drafts_created"] == 0
+    assert stats["discarded"] == 0
+    assert stats["avg_score_posted"] is None
+    assert stats["errors_this_week"] == 0
+
+
+def test_get_draft_stats_this_week_counts():
+    from src.store import Store
+    s = Store(":memory:")
+    s.save_draft("hn", "https://hn.com/a", "Post A", "snip", "draft")
+    s.save_draft("hn", "https://hn.com/b", "Post B", "snip", "draft")
+    s.save_draft("hn", "https://hn.com/c", "Post C", "snip", "draft")
+    drafts = s.get_pending_drafts()
+    # Mark first as posted with score 9.0
+    s.update_draft_score(drafts[0]["id"], 9.0, 1)
+    s.mark_draft(drafts[0]["id"], "posted")
+    # Mark second as discarded
+    s.mark_draft(drafts[1]["id"], "discarded")
+    # Log an error
+    s.log_error("test_source", "some error")
+    stats = s.get_draft_stats_this_week()
+    assert stats["posts_published"] == 1
+    assert stats["drafts_created"] == 3
+    assert stats["discarded"] == 1
+    assert stats["avg_score_posted"] == 9.0
+    assert stats["errors_this_week"] == 1

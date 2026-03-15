@@ -51,7 +51,10 @@ class Store:
                 body_snippet TEXT,
                 draft_response TEXT NOT NULL,
                 status TEXT DEFAULT 'pending',
-                created_at TEXT DEFAULT (datetime('now'))
+                created_at TEXT DEFAULT (datetime('now')),
+                score REAL,
+                score_attempts INTEGER DEFAULT 0,
+                post_url TEXT
             );
             CREATE TABLE IF NOT EXISTS errors (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -75,6 +78,20 @@ class Store:
                 recorded_at TEXT DEFAULT (datetime('now'))
             );
         """)
+        self._migrate_drafts_table()
+        self.conn.commit()
+
+    def _migrate_drafts_table(self):
+        """Add any missing columns to drafts table for backward compatibility."""
+        existing = {row[1] for row in self.conn.execute("PRAGMA table_info(drafts)").fetchall()}
+        migrations = [
+            ("score", "REAL"),
+            ("score_attempts", "INTEGER DEFAULT 0"),
+            ("post_url", "TEXT"),
+        ]
+        for col_name, col_def in migrations:
+            if col_name not in existing:
+                self.conn.execute(f"ALTER TABLE drafts ADD COLUMN {col_name} {col_def}")
         self.conn.commit()
 
     def tables(self) -> list[str]:
@@ -223,6 +240,58 @@ class Store:
             (cutoff, limit)
         ).fetchall()
         return [dict(r) for r in rows]
+
+    def update_draft_score(self, draft_id: int, score: float, attempts: int):
+        self.conn.execute(
+            "UPDATE drafts SET score=?, score_attempts=? WHERE id=?",
+            (score, attempts, draft_id)
+        )
+        self.conn.commit()
+
+    def update_draft_response(self, draft_id: int, new_response: str):
+        self.conn.execute(
+            "UPDATE drafts SET draft_response=? WHERE id=?",
+            (new_response, draft_id)
+        )
+        self.conn.commit()
+
+    def record_post_url(self, draft_id: int, post_url: str):
+        self.conn.execute(
+            "UPDATE drafts SET post_url=? WHERE id=?",
+            (post_url, draft_id)
+        )
+        self.conn.commit()
+
+    def get_draft_stats_this_week(self) -> dict:
+        week_ago = (datetime.now() - timedelta(days=7)).isoformat()
+        posts_published = self.conn.execute(
+            "SELECT COUNT(*) as cnt FROM drafts WHERE status='posted' AND created_at > ?",
+            (week_ago,)
+        ).fetchone()["cnt"]
+        drafts_created = self.conn.execute(
+            "SELECT COUNT(*) as cnt FROM drafts WHERE created_at > ?",
+            (week_ago,)
+        ).fetchone()["cnt"]
+        discarded = self.conn.execute(
+            "SELECT COUNT(*) as cnt FROM drafts WHERE status='discarded' AND created_at > ?",
+            (week_ago,)
+        ).fetchone()["cnt"]
+        avg_row = self.conn.execute(
+            "SELECT AVG(score) as avg FROM drafts WHERE status='posted' AND created_at > ?",
+            (week_ago,)
+        ).fetchone()
+        avg_score_posted = avg_row["avg"]
+        errors_this_week = self.conn.execute(
+            "SELECT COUNT(*) as cnt FROM errors WHERE created_at > ?",
+            (week_ago,)
+        ).fetchone()["cnt"]
+        return {
+            "posts_published": posts_published,
+            "drafts_created": drafts_created,
+            "discarded": discarded,
+            "avg_score_posted": avg_score_posted,
+            "errors_this_week": errors_this_week,
+        }
 
     def get_published_content(self, limit: int = 50) -> list[dict]:
         rows = self.conn.execute(
